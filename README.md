@@ -16,7 +16,7 @@ ATOM Lite‚ðŽg—p‚µ‚½Webƒuƒ‰ƒEƒU‚Å‘€ì‚·‚éƒRƒ“ƒpƒNƒg‚ÈNƒQ[ƒW“S“¹–ÍŒ^—pƒpƒ[ƒpƒbƒ
   –œ‚ªˆêSoC‚Ì“®ì‚ª•sˆÀ’è‚É‚È‚Á‚Ä‚àA‰ß“d—¬•ÛŒì‚ð“à‘ ‚µ‚½ƒ‚[ƒ^ƒhƒ‰ƒCƒoIC‚É‚æ‚èˆÀ‘S«‚ðŠm•Û‚µ‚Ü‚·B
 
 ## Block Diagram^ƒuƒƒbƒN}
-![](RmppAtom_BlockDiagram.svg)
+![](BlockDiagram_RmppAtom.svg)
 
 ## Specification Overview ^ Žd—lŠT—v
 <table>
