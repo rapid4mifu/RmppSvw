@@ -1,76 +1,76 @@
 # RmppAtom
-## Overview^ŠT—v
-A compact power pack for N-scale railway models operated with a web browser using ATOM Lite.
-ATOM Lite‚ğg—p‚µ‚½Webƒuƒ‰ƒEƒU‚Å‘€ì‚·‚éƒRƒ“ƒpƒNƒg‚ÈNƒQ[ƒW“S“¹–ÍŒ^—pƒpƒ[ƒpƒbƒN‚Å‚·B
+## Overviewï¼æ¦‚è¦
+A compact power pack for N-scale railway models operated with a web browser using ATOM Lite.<br/>
+ATOM Liteã‚’ä½¿ç”¨ã—ãŸWebãƒ–ãƒ©ã‚¦ã‚¶ã§æ“ä½œã™ã‚‹ã‚³ãƒ³ãƒ‘ã‚¯ãƒˆãªNã‚²ãƒ¼ã‚¸é‰„é“æ¨¡å‹ç”¨ãƒ‘ãƒ¯ãƒ¼ãƒ‘ãƒƒã‚¯ã§ã™ã€‚
 
-![ATOM Lite‚ğg—p‚µ‚½“S“¹–ÍŒ^—pƒpƒ[ƒpƒbƒN](DSC02939.jpg)
+![ATOM Liteã‚’ä½¿ç”¨ã—ãŸé‰„é“æ¨¡å‹ç”¨ãƒ‘ãƒ¯ãƒ¼ãƒ‘ãƒƒã‚¯](DSC02939.jpg)
 
-## Features^“Á’¥
+## Featuresï¼ç‰¹å¾´
 - It is can run N-scale railway models by operating a web browser on a smartphone or other device.
-  ƒXƒ}[ƒgƒtƒHƒ““™‚ÌWebƒuƒ‰ƒEƒU‚Ì‘€ì‚É‚æ‚èANƒQ[ƒW“S“¹–ÍŒ^‚ğ‘–‚ç‚¹‚é‚±‚Æ‚ª‚Å‚«‚Ü‚·B
+  ã‚¹ãƒãƒ¼ãƒˆãƒ•ã‚©ãƒ³ç­‰ã®Webãƒ–ãƒ©ã‚¦ã‚¶ã®æ“ä½œã«ã‚ˆã‚Šã€Nã‚²ãƒ¼ã‚¸é‰„é“æ¨¡å‹ã‚’èµ°ã‚‰ã›ã‚‹ã“ã¨ãŒã§ãã¾ã™ã€‚
 - It is designed to be operated exclusively from a web browser, without switches or dials. By utilizing existing hardware products, it is easy to create power pack.
-  ƒXƒCƒbƒ`‚âƒ_ƒCƒ„ƒ‹‚ğÈ—ª‚µAWebƒuƒ‰ƒEƒU‚©‚ç‚Ì‘€ìê—p‚Ìd—l‚Å‚·BŠù‘¶‚Ìƒn[ƒhƒEƒFƒA»•i‚ğŠˆ—p‚·‚é‚±‚Æ‚ÅAƒpƒ[ƒpƒbƒN‚ğ—eˆÕ‚É©ì‚·‚é‚±‚Æ‚ª‰Â”\‚Å‚·B
+  ã‚¹ã‚¤ãƒƒãƒã‚„ãƒ€ã‚¤ãƒ¤ãƒ«ã‚’çœç•¥ã—ã€Webãƒ–ãƒ©ã‚¦ã‚¶ã‹ã‚‰ã®æ“ä½œå°‚ç”¨ã®ä»•æ§˜ã§ã™ã€‚æ—¢å­˜ã®ãƒãƒ¼ãƒ‰ã‚¦ã‚§ã‚¢è£½å“ã‚’æ´»ç”¨ã™ã‚‹ã“ã¨ã§ã€ãƒ‘ãƒ¯ãƒ¼ãƒ‘ãƒƒã‚¯ã‚’å®¹æ˜“ã«è‡ªä½œã™ã‚‹ã“ã¨ãŒå¯èƒ½ã§ã™ã€‚
 - Achieves low cost and space saving by using SoC (Espressif Systems : ESP32) compatible with Wi-Fi standard.
-  Wi-Fi‹KŠi‚É‘Î‰‚µ‚½SoC(Espressif Systems : ESP32)‚ğÌ—p‚µA’áƒRƒXƒgEÈƒXƒy[ƒX‚ğÀŒ»‚Å‚«‚Ü‚·B
+  Wi-Fiè¦æ ¼ã«å¯¾å¿œã—ãŸSoC(Espressif Systems : ESP32)ã‚’æ¡ç”¨ã—ã€ä½ã‚³ã‚¹ãƒˆãƒ»çœã‚¹ãƒšãƒ¼ã‚¹ã‚’å®Ÿç¾ã§ãã¾ã™ã€‚
 - Even if the SoC operation becomes unstable, safety is ensured by the motor driver IC with built-in overcurrent protection.
-  –œ‚ªˆêSoC‚Ì“®ì‚ª•sˆÀ’è‚É‚È‚Á‚Ä‚àA‰ß“d—¬•ÛŒì‚ğ“à‘ ‚µ‚½ƒ‚[ƒ^ƒhƒ‰ƒCƒoIC‚É‚æ‚èˆÀ‘S«‚ğŠm•Û‚µ‚Ü‚·B
+  ä¸‡ãŒä¸€SoCã®å‹•ä½œãŒä¸å®‰å®šã«ãªã£ã¦ã‚‚ã€éé›»æµä¿è­·ã‚’å†…è”µã—ãŸãƒ¢ãƒ¼ã‚¿ãƒ‰ãƒ©ã‚¤ãƒICã«ã‚ˆã‚Šå®‰å…¨æ€§ã‚’ç¢ºä¿ã—ã¾ã™ã€‚
 
-## Block Diagram^ƒuƒƒbƒN}
+## Block Diagramï¼ãƒ–ãƒ­ãƒƒã‚¯å›³
 ![](BlockDiagram_RmppAtom.svg)
 
-## Specification Overview ^ d—lŠT—v
+## Specification Overview ï¼ ä»•æ§˜æ¦‚è¦
 <table>
 	<tbody>
 	<tr>
-	<th colspan="2">Item^€–Ú</th>
-	<th>specification^d—l</th>
+	<th colspan="2">Itemï¼é …ç›®</th>
+	<th>specificationï¼ä»•æ§˜</th>
 	</tr>
 	<tr>
-	<td colspan="2">Rated Input Voltage<br>’èŠi“ü—Í“dˆ³</td>
+	<td colspan="2">Rated Input Voltage<br>å®šæ ¼å…¥åŠ›é›»åœ§</td>
 	<td>DC12V</td>
 	</tr>
 	<tr>
-	<td colspan="2">Rated Output Current<br>’èŠio—Í“d—¬</td>
+	<td colspan="2">Rated Output Current<br>å®šæ ¼å‡ºåŠ›é›»æµ</td>
 	<td>1.5A</td>
 	</tr>
 	<tr>
-	<td rowspan="2">Output Control<br>o—Í§Œä</td>
-	<td>Method<br>•û®</td>
+	<td rowspan="2">Output Control<br>å‡ºåŠ›åˆ¶å¾¡</td>
+	<td>Method<br>æ–¹å¼</td>
 	<td>PWM (Frequency : 19kHz, Resolution : 12bit)</td>
 	</tr>
 	<tr>
-	<td>Polarity<br>‹É«</td>
-	<td>both directions (forward and reverse)<br>—¼•ûŒüi‘Oi^Œã‘Şj
+	<td>Polarity<br>æ¥µæ€§</td>
+	<td>both directions (forward and reverse)<br>ä¸¡æ–¹å‘ï¼ˆå‰é€²ï¼å¾Œé€€ï¼‰
 	</tr>
 	<tr>
-	<td colspan="2">Display<br>•\¦</td>
+	<td colspan="2">Display<br>è¡¨ç¤º</td>
 	<td>RGB LED</td>
 	</tr>
 	<tr>
-	<td colspan="2">Protections<br>•ÛŒì</td>
-	<td>built-in motor driver IC (over current, thermal shutdown)<br>ƒ‚[ƒ^ƒhƒ‰ƒCƒoIC“à‘ i‰ß“d—¬A‰ß”Mj</td>
+	<td colspan="2">Protections<br>ä¿è­·</td>
+	<td>built-in motor driver IC (over current, thermal shutdown)<br>ãƒ¢ãƒ¼ã‚¿ãƒ‰ãƒ©ã‚¤ãƒICå†…è”µï¼ˆéé›»æµã€éç†±ï¼‰</td>
 	</tr>
 	</tbody>
 </table>
 
-## Requirement ^ •K—v—vŒ
-### Hardware ^ ƒn[ƒhƒEƒFƒA
+## Requirement ï¼ å¿…è¦è¦ä»¶
+### Hardware ï¼ ãƒãƒ¼ãƒ‰ã‚¦ã‚§ã‚¢
 - [ATOM Lite ESP32 IoT Development Kit](https://shop.m5stack.com/products/atom-lite-esp32-development-kit)
 - [ATOMIC H-Bridge Driver Base (DRV8876)](https://shop.m5stack.com/products/atomic-h-bridge-driver-base-drv8876)
 
-### Software ^ ƒ\ƒtƒgƒEƒFƒA
-#### Framework ^ ƒtƒŒ[ƒ€ƒ[ƒN
+### Software ï¼ ã‚½ãƒ•ãƒˆã‚¦ã‚§ã‚¢
+#### Framework ï¼ ãƒ•ãƒ¬ãƒ¼ãƒ ãƒ¯ãƒ¼ã‚¯
 - Arduino
-#### Development Environment ^ ŠJ”­ŠÂ‹«
+#### Development Environment ï¼ é–‹ç™ºç’°å¢ƒ
 - VSCode & PlatformIO
 
-## Others ^ ‚»‚Ì‘¼
-Coming soon
-‹ß“úŒöŠJ—\’è
+## Others ï¼ ãã®ä»–
+Coming soon<br/>
+è¿‘æ—¥å…¬é–‹äºˆå®š
 
-## License ^ ƒ‰ƒCƒZƒ“ƒX
-This project is licensed under the MIT License. See the LICENSE.md file for details.
-‚±‚ÌƒvƒƒWƒFƒNƒg‚Í MIT ƒ‰ƒCƒZƒ“ƒX‚ÌŒ³‚Éƒ‰ƒCƒZƒ“ƒX‚³‚ê‚Ä‚¢‚Ü‚·B Ú×‚Í LICENSE.md ‚ğ‚²——‚­‚¾‚³‚¢B
+## License ï¼ ãƒ©ã‚¤ã‚»ãƒ³ã‚¹
+This project is licensed under the MIT License. See the LICENSE.md file for details.<br/>
+ã“ã®ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆã¯ MIT ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã®å…ƒã«ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã•ã‚Œã¦ã„ã¾ã™ã€‚ è©³ç´°ã¯ LICENSE.md ã‚’ã”è¦§ãã ã•ã„ã€‚
 
 ## Author
 [X(Twitter)](https://x.com/rapid_mifu)
