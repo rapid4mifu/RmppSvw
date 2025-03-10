@@ -1,31 +1,35 @@
 # RmppAtom Usage
 
 ## Wi-Fi Connection
+ The power pack connects via Wi-Fi and can operate in either Access Point mode (host) or Station mode (client).
 
 ### Connecting directly to a smartphone or other device
  1. Switch the power pack to Access Point mode.
  1. Select the power pack’s SSID (RmppAtom-softAP) on your smartphone or other device, and enter the password (p@ass1234) to connect.
  1. The SSID and password can be changed using serial communication commands.
+ 
 ### Connecting via a Wi-Fi router or access point
  1. Switch the power pack to Station mode.
  1. Use serial communication commands to set the SSID and password for the access point. The SSID and password will be saved in the power pack's non-volatile memory.
  1. The power pack will automatically connect to the access point using the saved SSID and password.
- 1. If you want to set a static IP address, you can modify it using serial communication commands.
-### Switching between Access Point mode and Station mode
- 1. Press and hold the operation button on ATOM Lite for 0.5 seconds or more. Once the mode change is complete, the LED on ATOM Lite will blink.
+ 1. By default, the IP address is automatically obtained from the access point. If the DHCP server is unavailable or if you need to set a static IP address, use the serial communication command to make the change.
+
+### Switching between Access Point and Station mode
+ 1. Press and hold the operation button on ATOM Lite for 0.5 seconds or more. Once the mode is changed, the LED on ATOM Lite will blink.
  1. Next, press the reset button on ATOM Lite. The power pack will begin operating in the new mode.
 
 ### Basic Operation
- 1. Open the power pack’s control screen on a smartphone or other device’s web browser. Enter the power pack’s hostname (rmpp-atom.local) or IP address in the URL. Once the control screen opens, it will display the input voltage and CPU temperature.
+ 1. Open the power pack's operation screen in a web browser on a smartphone or similar device. Enter the power pack's hostname (rmpp-atom.local) or IP address in the URL. The hostname can be changed using the serial communication command.
+ 1. Once the control screen opens, it will display the input voltage and CPU temperature.
  1. Tap the Forward or Reverse button. The button will turn green when the output is turned on.
  1. Adjust the speed using the slider.
- 1. Tap the OFF button. The button will return to its original color when the output is turned off.
+ 1. Tap the OFF button. The button will change back to its original color when the output is turned off.
 ### Changing the Direction
  1. Set the speed to 0 using the slider or tap the Stop button.
  1. Tap the OFF button.
  1. Tap the Forward or Reverse button to change the direction.
 ### Emergency Stop
- 1. Tap the OFF button or press the operation button on ATOM Lite. This will immediately turn off the output, even while in motion.
+ 1. Tap the OFF button or press the operation button on ATOM Lite. This will immediately stop the output, even if the railway models are running.
 
 ## LED Indicators
 
