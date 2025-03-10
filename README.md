@@ -57,9 +57,9 @@ ATOM Liteを使用したWebブラウザで操作するコンパクトなNゲー�
 
 ## Requirement ／ 必要要件
 ### Hardware ／ ハードウェア
-- ATOM Lite ESP32 IoT Development Kit
+- ATOM Lite ESP32 IoT Development Kit<br/>
  Product page : [shop.m5stack.com](https://shop.m5stack.com/products/atom-lite-esp32-development-kit)
-- ATOMIC H-Bridge Driver Base (DRV8876)
+- ATOMIC H-Bridge Driver Base (DRV8876)<br/>
  Product page : [shop.m5stack.com](https://shop.m5stack.com/products/atomic-h-bridge-driver-base-drv8876)
 
 ### Software ／ ソフトウェア
