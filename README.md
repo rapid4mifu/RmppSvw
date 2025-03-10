@@ -1,22 +1,22 @@
-# RmppAtom
+# RmppAtom (Rmpp : Railway Model Power Pack)
 ## Overview／概要
 A compact power pack for N-scale railway models operated with a web browser using ATOM Lite.<br/>
 ATOM Liteを使用したWebブラウザで操作するコンパクトなNゲージ鉄道模型用パワーパックです。
 
-![ATOM Liteを使用した鉄道模型用パワーパック](DSC02939.jpg)
+![ATOM Liteを使用した鉄道模型用パワーパック](img/DSC02939.jpg)
 
 ## Features／特徴
-- It is can run N-scale railway models by operating a web browser on a smartphone or other device.
+- It is can run N-scale railway models by operating a web browser on a smartphone or other device.<br/>
   スマートフォン等のWebブラウザの操作により、Nゲージ鉄道模型を走らせることができます。
-- It is designed to be operated exclusively from a web browser, without switches or dials. By utilizing existing hardware products, it is easy to create power pack.
+- It is designed to be operated exclusively from a web browser, without switches or dials. By utilizing existing hardware products, it is easy to create power pack.<br/>
   スイッチやダイヤルを省略し、Webブラウザからの操作専用の仕様です。既存のハードウェア製品を活用することで、パワーパックを容易に自作することが可能です。
-- Achieves low cost and space saving by using SoC (Espressif Systems : ESP32) compatible with Wi-Fi standard.
+- Achieves low cost and space saving by using SoC (Espressif Systems : ESP32) compatible with Wi-Fi standard.<br/>
   Wi-Fi規格に対応したSoC(Espressif Systems : ESP32)を採用し、低コスト・省スペースを実現できます。
-- Even if the SoC operation becomes unstable, safety is ensured by the motor driver IC with built-in overcurrent protection.
+- Even if the SoC operation becomes unstable, safety is ensured by the motor driver IC with built-in overcurrent protection.<br/>
   万が一SoCの動作が不安定になっても、過電流保護を内蔵したモータドライバICにより安全性を確保します。
 
 ## Block Diagram／ブロック図
-![](BlockDiagram_RmppAtom.svg)
+![](img/BlockDiagram_RmppAtom.svg)
 
 ## Specification Overview ／ 仕様概要
 <table>
@@ -71,8 +71,8 @@ ATOM Liteを使用したWebブラウザで操作するコンパクトなNゲー�
 - [日本語](USAGE_jp.md)
 
 ## License ／ ライセンス
-This project is licensed under the MIT License. See the LICENSE.md file for details.<br/>
-このプロジェクトは MIT ライセンスの元にライセンスされています。 詳細は LICENSE.md をご覧ください。
+This project is licensed under the MIT License. See the [LICENSE.md](LICENSE) file for details.<br/>
+このプロジェクトは MIT ライセンスの元にライセンスされています。 詳細は [LICENSE.md](LICENSE) をご覧ください。
 
 ## Author
 [X(Twitter)](https://x.com/rapid_mifu)
