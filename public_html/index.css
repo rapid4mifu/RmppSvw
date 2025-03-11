@@ -1,0 +1,109 @@
+/* ブラウザ幅 < 576px 
+html {
+	font-size: 62.5%;
+}
+/* 576px ≦ ブラウザ幅 < 768px 
+@media (min-width: 576px) {
+	html {
+		font-size: clamp(0.1rem, calc(0.1rem + 1.4vw), 10rem);
+	}
+}
+/* 768px ≦ ブラウザ幅 < 992px 
+@media (min-width: 768px) {
+	html {
+		font-size: clamp(0.875rem, calc(0.5rem + 0.8vw), 5rem);
+	}
+}
+/* 992px ≦ ブラウザ幅 < 1200px 
+@media (min-width: 992px) {
+	html {
+		font-size: clamp(0.875rem, calc(0.5rem + 0.8vw), 5rem);
+	}
+}
+/* 1200px ≦ ブラウザ幅 
+@media (min-width: 1200px) {
+	html {
+		font-size: clamp(0.875rem, calc(0.5rem + 0.8vw), 5rem);
+	}
+}*/
+
+.info-txet {
+	font-size: 0.7rem;
+	margin: 0.2rem;
+}
+
+.led-seg-container {
+	background-color: black;
+	position: relative;
+	font-size: 1.5rem;
+	font-family: DSEG7-Classic-MINI;
+	font-style: italic;
+	width: 4.2rem;
+	height: 2.4rem;
+	margin: auto;
+}
+
+.led-seg-background {
+	color:rgba(255,255,255,0.2);
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: -0.2rem;
+	left: 0rem;
+	z-index: 50;
+}
+
+.led-seg {
+	color:greenyellow;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: -0.2rem;
+	left: 0rem;
+	z-index: 100;
+}
+
+.svg-icon {
+	width: 1.2rem;
+	fill: currentColor;
+}
+
+.btn-dir {
+	width: 3rem;
+	padding: 0rem;
+	margin: 0.2rem 0.5rem;
+	fill: currentColor;
+}
+
+.btn-dir svg {
+	width: 100%; /* 親要素に合わせて拡大縮小 */
+	height: auto; /* アスペクト比を保持 */
+}
+
+.btn-dir div {
+	font-size: 0.7rem;
+	margin: 0.2rem;
+}
+
+#out-duty {
+	height: 85%;
+	margin-top: 5vh;
+}
+
+.svg-disp {
+	width: 2rem;
+	margin: 0.5em;
+	fill: currentColor;
+}
+
+/* ブラウザ幅 > 768px */
+.svg-stat {
+	width: 5vh;
+	margin: 0.4rem auto;
+}
+
+.svg-stat svg {
+	width: 100%; /* 親要素に合わせて拡大縮小 */
+	height: auto; /* アスペクト比を保持 */
+	fill: currentColor;
+}
