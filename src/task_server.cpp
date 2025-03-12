@@ -187,7 +187,7 @@ void srv_processTask(void* pvParameters)
 
 	while(true) {
 		// send binary data to the client via WebSocket
-		if (pdPASS == xQueueReceive(xQueBinToClient, &queBinary, portMAX_DELAY)) {
+		if (pdPASS == xQueueReceive(xQueBinToClient, &queBinary, 0)) {
 			if (queBinary.len) {
 				if (queBinary.id) {
 					webSocket.binary(queBinary.id, &queBinary.data[0], queBinary.len);
@@ -198,7 +198,7 @@ void srv_processTask(void* pvParameters)
 		}
 
 		// send text data to the client via WebSocket
-		if (pdPASS == xQueueReceive(xQueTxtToClient, &queText, portMAX_DELAY)) {
+		if (pdPASS == xQueueReceive(xQueTxtToClient, &queText, 0)) {
 			if (queText.data.length()) {
 				if (queText.id) {
 					webSocket.text(queText.id, queText.data.c_str());
