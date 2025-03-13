@@ -1,8 +1,8 @@
 // --------------------------------------------------------
 // Copyright (c) 2025 rapid4mifu 
 //
-// These codes are licensed under MIT license.
-// https://opensource.org/licenses/mit-license.php
+// These codes are licensed under GPL v3.0
+// https://opensource.org/license/GPL-3.0
 // --------------------------------------------------------
 
 #ifndef __TASK_SYSTEM_H__	/* ìÒèdíËã`ñhé~ */
