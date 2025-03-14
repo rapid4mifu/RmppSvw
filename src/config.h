@@ -7,9 +7,9 @@
 
 #ifndef __CONFIG_H__	/* ìÒèdíËã`ñhé~ */
 
-#define CFG_NAMESPACE	"RmppAtom"
-#define HOST_DEFAULT	"rmpp-atom"
-#define AP_SSID_DEFAULT	"RmppAtom-softAP"
+#define CFG_NAMESPACE	"RmppSvw"
+#define HOST_DEFAULT	"rmpp-svw"
+#define AP_SSID_DEFAULT	"RmppSvw-softAP"
 #define AP_PASS_DEFAULT	"p@ss1234"
 
 #endif /* __CONFIG_H__*/	/* ìÒèdíËã`ñhé~ */

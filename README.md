@@ -17,7 +17,7 @@ ATOM Liteを使用したWebブラウザで操作するコンパクトなNゲー�
   万が一SoCの動作が不安定になっても、過電流保護を内蔵したモータドライバICにより安全性を確保します。
 
 ## Block Diagram／ブロック図
-![](img/BlockDiagram_RmppAtom.svg)
+![](img/BlockDiagram_RmppSvw.svg)
 
 ## Specification Overview ／ 仕様概要
 <table>

@@ -1,11 +1,11 @@
-# RmppAtom Usage
+# RmppSvw Usage
 
 ## Wi-Fi Connection
  The power pack connects via Wi-Fi and can operate in either Access Point mode (host) or Station mode (client).
 
 ### Connecting directly to a smartphone or other device
  1. Switch the power pack to Access Point mode.
- 1. Select the power pack’s SSID (RmppAtom-softAP) on your smartphone or other device, and enter the password (p@ass1234) to connect.
+ 1. Select the power pack’s SSID (RmppSvw-softAP) on your smartphone or other device, and enter the password (p@ass1234) to connect.
  1. The SSID and password can be changed using serial communication commands.
  
 ### Connecting via a Wi-Fi router or access point
@@ -19,7 +19,7 @@
  1. Next, press the reset button on ATOM Lite. The power pack will begin operating in the new mode.
 
 ### Basic Operation
- 1. Open the power pack's operation screen in a web browser on a smartphone or similar device. Enter the power pack's hostname (rmpp-atom.local) or IP address in the URL. The hostname can be changed using the serial communication command.
+ 1. Open the power pack's operation screen in a web browser on a smartphone or similar device. Enter the power pack's hostname (rmpp-svw.local) or IP address in the URL. The hostname can be changed using the serial communication command.
  1. Once the control screen opens, it will display the input voltage and CPU temperature.
  1. Tap the Forward or Reverse button. The button will turn green when the output is turned on.
  1. Adjust the speed using the slider.
