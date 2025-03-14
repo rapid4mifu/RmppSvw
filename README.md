@@ -1,4 +1,5 @@
-# RmppAtom (Rmpp : Railway Model Power Pack)
+# RmppSvw 
+ **R**ailway **m**odel **p**ower **p**ack **S**imple function **v**ia **w**eb browser
 ## Overview／概要
 A compact power pack for N-scale railway models operated with a web browser using ATOM Lite.<br/>
 ATOM Liteを使用したWebブラウザで操作するコンパクトなNゲージ鉄道模型用パワーパックです。
@@ -73,8 +74,8 @@ ATOM Liteを使用したWebブラウザで操作するコンパクトなNゲー�
  サンプルとして、ビルド済みのバイナリファイルを提供しています。ウェブシリアル機能に対応したブラウザ（Chrome、Microsoft Edge など）から [https://rapid4mifu.github.io/](https://rapid4mifu.github.io/) へアクセスし、パソコンに接続した ATOM Lite へウェブシリアル経由でバイナリファイルを書き込むことができます。その他の使用方法は、[Usage.md](USAGE_jp.md)を参照ください。
 
 ## License ／ ライセンス
-This project is licensed under the MIT License. See the [LICENSE.md](LICENSE) file for details.<br/>
-このプロジェクトは MIT ライセンスの元にライセンスされています。 詳細は [LICENSE.md](LICENSE) をご覧ください。
+This project is licensed under the General Public License Version 3. See the [LICENSE.md](LICENSE) file for details.<br/>
+このプロジェクトは General Public License Version 3 の元にライセンスされています。 詳細は [LICENSE.md](LICENSE) をご覧ください。
 
 ## Author
 [X(Twitter)](https://x.com/rapid_mifu)
