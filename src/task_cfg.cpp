@@ -6,25 +6,37 @@
 // --------------------------------------------------------
 
 #include "task_cfg.h"
-#include "lib/EspEasySerialCommandEx.h"
+#include "task_cli.h"
 
-#include "board.h"
 #include "config.h"
 
-#ifdef CFG_ATTACH_CALLBACK_FROM_SERVER
-#include "task_server.h"
+#include <WiFi.h>
+
+#if defined(ESP32)
+#include <Preferences.h>
+#define CFG_USE_PREFERENCES
+#else
+#include <ArduinoJson.h>
+#include <StreamUtils.h>
 #endif
 
-#include <WiFi.h>
-#include <Preferences.h>
+#if defined(TARGET_RP2040) || defined(TARGET_RP2350)
+#include <EEPROM.h>
+#include <FreeRTOS.h>
+#include <task.h>
+#endif
 
+#if defined(ESP32)
 #ifndef APP_CPU_NUM
 #define APP_CPU_NUM (1)
 #endif
+#endif
 
-EspEasySerialCommandEx cmds(Serial);
-
+#if defined(CFG_USE_PREFERENCES)
 Preferences prefs;
+#else
+StaticJsonDocument<2048> jDoc;
+#endif
 
 // Wi-Fi setting for access point mode
 //  [key]
@@ -39,6 +51,19 @@ const String appw_default = AP_PASS_DEFAULT;
 bool isApMode;
 String sApModeSsid;
 String sApModePass;
+
+#ifndef ESP32
+// Wi-Fi setting for station mode
+//  [key]
+const char stid_key[] = "stid";
+const char stpw_key[] = "stpw";
+//  [initial value]
+const String stid_default = "";
+const String stpw_default = "";
+//  [variable]
+String sStModeSsid;
+String sStModePass;
+#endif
 
 // TCP/IP network configuration
 //  [key]
@@ -62,22 +87,19 @@ const String host_default = HOST_DEFAULT;
 //  [variable]
 String sHostName;
 
-TaskHandle_t hTaskConfig;
 CallbackOnChangeSuccess cbChangeSuccess = NULL;
 
-static void cfg_processTask(void* pvParameters);
-
-void cfg_actionSavedData(EspEasySerialCommandEx::command_t command);
-void cfg_setWifiCredential(EspEasySerialCommandEx::command_t command);
-void cfg_setWifiCredentialForAP(EspEasySerialCommandEx::command_t command);
-void cfg_setLocalAddress(EspEasySerialCommandEx::command_t command);
-void cfg_setDefaultGateway(EspEasySerialCommandEx::command_t command);
-void cfg_setSubnetMask(EspEasySerialCommandEx::command_t command);
-void cfg_setHostName(EspEasySerialCommandEx::command_t command);
+void cfg_actionSavedData(cli_cmd_t command);
+void cfg_setWifiCredential(cli_cmd_t command);
+void cfg_setWifiCredentialForAP(cli_cmd_t command);
+void cfg_setLocalAddress(cli_cmd_t command);
+void cfg_setDefaultGateway(cli_cmd_t command);
+void cfg_setSubnetMask(cli_cmd_t command);
+void cfg_setHostName(cli_cmd_t command);
 
 /******************************************************************************
 * Function Name: CFG_initTask
-* Description  : コンフィグレーションタスク初期化
+* Description  : コンソールタスク初期化
 * Arguments    : none
 * Return Value : true  -> initialization succeeded, 
                  false -> initialization failed
@@ -87,7 +109,7 @@ bool CFG_initTask(void)
 	size_t len = 0;
 
 	Serial.println("Configuration data loading ...");
-
+#if defined(CFG_USE_PREFERENCES)
 	// open namespace
 	prefs.begin(CFG_NAMESPACE);
 
@@ -108,7 +130,21 @@ bool CFG_initTask(void)
 		prefs.putString(appw_key, appw_default);
 	}
 	sApModePass = prefs.getString(appw_key, appw_default);
-	
+
+#ifndef ESP32
+	// wi-fi ssid for station mode
+	if (!prefs.isKey(stid_key)) {
+		prefs.putString(stid_key, stid_default);
+	}
+	sStModeSsid = prefs.getString(stid_key, stid_default);
+
+	// wi-fi password for station mode
+	if (!prefs.isKey(stpw_key)) {
+		prefs.putString(stpw_key, stpw_default);
+	}
+	sStModePass = prefs.getString(stpw_key, stpw_default);
+#endif
+
 	// local ip address
 	len = prefs.getBytesLength(ipad_key);
 	if (len == 4) {
@@ -151,49 +187,84 @@ bool CFG_initTask(void)
 	// close namespace
 	prefs.end();
 
-	// preset Reset Function
-	cmds.addCommand("RESET", EspEasySerialCommandEx::resetCommand);
-	// host name setup
-	cmds.addCommand("CNFG", cfg_actionSavedData);
-	// Wi-Fi setup
-	cmds.addCommand("WIFI", cfg_setWifiCredential);
-	// Wi-Fi setup (for access point mode)
-	cmds.addCommand("WFAP", cfg_setWifiCredentialForAP);
-	// IP Address setup
-	cmds.addCommand("IPAD", cfg_setLocalAddress);
-	// Gateway setup
-	cmds.addCommand("GWAY", cfg_setDefaultGateway);
-	// Subnet setup
-	cmds.addCommand("SNET", cfg_setSubnetMask);
-	// host name setup
-	cmds.addCommand("HOST", cfg_setHostName);
+#else
+	EEPROM.begin(2048);
+	EepromStream eepromStream(0, 2048);
+	deserializeJson(jDoc, eepromStream);
+	EEPROM.end();
 
-#ifdef CFG_ATTACH_CALLBACK_FROM_SERVER
-	SRV_attachWsTextListener(CFG_processCommand);
+	// wi-fi operation for access point mode
+	if (!jDoc[apen_key]){
+		jDoc[apen_key] = apen_default;
+	}
+	isApMode = jDoc[apen_key].as<bool>();
+
+	// wi-fi ssid for access point mode
+	if (!jDoc[apid_key]) {
+		jDoc[apid_key] = apid_default;
+	}
+	sApModeSsid = String(jDoc[apid_key]);
+
+	// wi-fi password for access point mode
+	if (!jDoc[appw_key]) {
+		jDoc[appw_key] = appw_default;
+	}
+	sApModePass = String(jDoc[appw_key]);
+
+	// wi-fi ssid for station mode
+	if (!jDoc[stid_key]) {
+		jDoc[stid_key] = stid_default;
+	}
+	sStModeSsid = String(jDoc[stid_key]);
+
+	// wi-fi password for station mode
+	if (!jDoc[stpw_key]) {
+		jDoc[stpw_key] = stpw_default;
+	}
+	sStModePass = String(jDoc[stpw_key]);
+
+	// local ip address
+	if (!jDoc[ipad_key]) {
+		jDoc[ipad_key] = IPAddress(ipad_default).toString();
+	}
+	ipLocal.fromString(jDoc[ipad_key].as<const char*>());
+
+	// default gateway
+	if (!jDoc[ipgw_key]) {
+		jDoc[ipgw_key] = IPAddress(ipgw_default).toString();
+	}
+	ipGateway.fromString(jDoc[ipgw_key].as<const char*>());
+
+	// subnet mask
+	if (!jDoc[ipsn_key]) {
+		jDoc[ipsn_key] = IPAddress(ipsn_default).toString();
+	}
+	ipSubnet.fromString(jDoc[ipsn_key].as<const char*>());
+
+	// Host name for Multicast DNS (mDNS)
+	if (!jDoc[host_key]) {
+		jDoc[host_key] = host_default;
+	}
+	sHostName = String(jDoc[host_key]);
+
 #endif
 
-	Serial.println("Configuration task is now starting ...");
-	BaseType_t taskCreated = xTaskCreateUniversal(cfg_processTask, "cfg_processTask", 4096, nullptr, 1, &hTaskConfig, APP_CPU_NUM);
-	if (pdPASS != taskCreated) {
-		Serial.println(" [failure] Failed to create Configuration task.");
-	}
+	// config function
+	CLI_addCommand("CNFG", cfg_actionSavedData);
+	// Wi-Fi setup
+	CLI_addCommand("WIFI", cfg_setWifiCredential);
+	// Wi-Fi setup (for access point mode)
+	CLI_addCommand("WFAP", cfg_setWifiCredentialForAP);
+	// IP Address setup
+	CLI_addCommand("IPAD", cfg_setLocalAddress);
+	// Gateway setup
+	CLI_addCommand("GWAY", cfg_setDefaultGateway);
+	// Subnet setup
+	CLI_addCommand("SNET", cfg_setSubnetMask);
+	// host name setup
+	CLI_addCommand("HOST", cfg_setHostName);
 
-	return (pdPASS == taskCreated) ? true : false;
-}
-
-/******************************************************************************
-* Function Name: cfg_processTask
-* Description  : コンフィグレーションタスク
-* Arguments    : none
-* Return Value : none
-******************************************************************************/
-void cfg_processTask(void* pvParameters)
-{
-	while (1)
-	{
-		cmds.task();
-		vTaskDelay(1);
-	}
+	return true;
 }
 
 /******************************************************************************
@@ -204,6 +275,7 @@ void cfg_processTask(void* pvParameters)
 ******************************************************************************/
 void CFG_resetSavedData(void)
 {
+#if defined(CFG_USE_PREFERENCES)
 	prefs.begin(CFG_NAMESPACE);
 
 	// wi-fi operation for access point mode
@@ -215,6 +287,12 @@ void CFG_resetSavedData(void)
 	// wi-fi password for access point mode
 	prefs.putString(appw_key, appw_default);
 	
+	// wi-fi ssid for station mode
+	//prefs.putString(stid_key, stid_default);
+
+	// wi-fi password for station mode
+	//prefs.putString(stpw_key, stpw_default);
+
 	// local ip address
 	prefs.putBytes(ipad_key, ipad_default, sizeof(ipad_default));
 
@@ -228,6 +306,40 @@ void CFG_resetSavedData(void)
 	prefs.putString(host_key, host_default);
 
 	prefs.end();
+
+#else
+	// wi-fi operation for access point mode
+	jDoc[apen_key] = apen_default;
+
+	// wi-fi ssid for access point mode
+	jDoc[apid_key] = apid_default;
+
+	// wi-fi password for access point mode
+	jDoc[appw_key] = appw_default;
+
+	// wi-fi ssid for station mode
+	jDoc[stid_key] = stid_default;
+
+	// wi-fi password for station mode
+	jDoc[stpw_key] = stpw_default;
+
+	// local ip address
+	jDoc[ipad_key] = IPAddress(ipad_default).toString();
+
+	// default gateway
+	jDoc[ipgw_key] = IPAddress(ipgw_default).toString();
+
+	// subnet mask
+	jDoc[ipsn_key] = IPAddress(ipsn_default).toString();
+
+	// Host name for Multicast DNS (mDNS)
+	jDoc[host_key] = host_default;
+
+	EEPROM.begin(2048);
+	EepromStream eepromStream(0, 2048);
+	serializeJson(jDoc, eepromStream);
+	EEPROM.end();
+#endif
 }
 
 /******************************************************************************
@@ -243,6 +355,11 @@ void CFG_printSavedData(void)
 	Serial.printf("   Wi-Fi (access point mode) credential\n");
 	Serial.printf("    SSID            : %s\n", sApModeSsid.c_str());
 	Serial.printf("    Password        : %s\n", sApModePass.c_str());
+#ifndef ESP32
+	Serial.printf("   Wi-Fi (station mode) credential\n");
+	Serial.printf("    SSID            : %s\n", sStModeSsid.c_str());
+	Serial.printf("    Password        : %s\n", sStModePass.c_str());
+#endif
 	Serial.printf("   TCP/IP network configuration\n");
 	Serial.printf("    local address   : %u.%u.%u.%u\n", ipLocal[0], ipLocal[1], ipLocal[2], ipLocal[3]);
 	Serial.printf("    default gateway : %u.%u.%u.%u\n", ipGateway[0], ipGateway[1], ipGateway[2], ipGateway[3]);
@@ -250,17 +367,6 @@ void CFG_printSavedData(void)
 	Serial.printf("   Multicast DNS (mDNS)\n");
 	Serial.printf("    host name       : %s\n", sHostName.c_str());	
 	Serial.printf("\n");
-}
-
-/******************************************************************************
-* Function Name: CFG_processCommand
-* Description  : コマンドを処理する
-* Arguments    : id - for websocket client id (set to 0 when not in use)
-* Return Value : none
-******************************************************************************/
-void CFG_processCommand(String command, uint32_t id)
-{
-	cmds.parseCommand(command);
 }
 
 /******************************************************************************
@@ -273,10 +379,19 @@ void CFG_setApMode(bool enable)
 {
 	if (isApMode != enable) {
 		isApMode = enable;
-		
+
+#if defined(CFG_USE_PREFERENCES)
 		prefs.begin(CFG_NAMESPACE);
 		prefs.putBool(apen_key, enable);
 		prefs.end();
+#else
+		jDoc[apen_key] = enable;
+
+		EEPROM.begin(2048);
+		EepromStream eepromStream(0, 2048);
+		serializeJson(jDoc, eepromStream);
+		EEPROM.end();
+#endif
 
 		if (NULL != cbChangeSuccess) {
 			cbChangeSuccess();
@@ -318,9 +433,9 @@ bool CFG_isApModeEnabled(void)
 * Arguments    : command.command2 = local address
 * Return Value : none
 ******************************************************************************/
-void cfg_actionSavedData(EspEasySerialCommandEx::command_t command)
+void cfg_actionSavedData(cli_cmd_t command)
 {
-	if ("RESET" == command.command2) {
+	if (command.command2 == "RESET") {
 		CFG_resetSavedData();
 	} else {
 		CFG_printSavedData();
@@ -333,25 +448,40 @@ void cfg_actionSavedData(EspEasySerialCommandEx::command_t command)
 * Arguments    : command.command2 = SSID, command.command3 = PASSWORD
 * Return Value : none
 ******************************************************************************/
-void cfg_setWifiCredential(EspEasySerialCommandEx::command_t command)
+void cfg_setWifiCredential(cli_cmd_t command)
 {
 	// > WIFI [SSID] [KEY]
-	Serial.println("Change the Wi-Fi credentials and connect to the access point.");
-	WiFi.begin(command.command2.c_str(), command.command3.c_str());
+	if (command.command2.length() && command.command3.length()) {
+#ifndef ESP32
+		jDoc[stid_key] = command.command2;
+		jDoc[stpw_key] = command.command3;
+		
+		EEPROM.begin(2048);
+		EepromStream eepromStream(0, 2048);
+		serializeJson(jDoc, eepromStream);
+		EEPROM.end();
+#endif
 
-	int i = 0;
-	while (WiFi.status() != WL_CONNECTED) {
-		if (200 < i) {
-			Serial.println(" [warning] Connection to the access point timed out.");
-			WiFi.disconnect();
-			return;
+		Serial.println("Change the Wi-Fi credentials and connect to the access point.");
+		WiFi.mode(WIFI_STA);
+		WiFi.begin(command.command2.c_str(), command.command3.c_str());
+
+		int i = 0;
+		while (WiFi.status() != WL_CONNECTED) {
+			if (200 < i) {
+				Serial.println(" [warning] Connection to the access point timed out.");
+				WiFi.disconnect();
+				return;
+			}
+
+			delay(50);
+			i++;
 		}
 
-		delay(50);
-		i++;
+		Serial.println(" Connected to the access point.");
+	} else {
+		Serial.printf("[failure] WIFI %s %s\n", command.command2.c_str(), command.command3.c_str());
 	}
-
-	Serial.println(" Connected to the access point.");
 }
 
 /******************************************************************************
@@ -360,14 +490,24 @@ void cfg_setWifiCredential(EspEasySerialCommandEx::command_t command)
 * Arguments    : command.command2 = SSID, command.command3 = PASSWORD
 * Return Value : none
 ******************************************************************************/
-void cfg_setWifiCredentialForAP(EspEasySerialCommandEx::command_t command)
+void cfg_setWifiCredentialForAP(cli_cmd_t command)
 {
 	// > WFAP [SSID] [PASSWORD]
 	if (command.command2.length() && command.command3.length()) {
+#if defined(CFG_USE_PREFERENCES)
 		prefs.begin(CFG_NAMESPACE);
 		prefs.putString(apid_key, command.command2.c_str());
 		prefs.putString(appw_key, command.command3.c_str());
 		prefs.end();
+#else
+		jDoc[apid_key] = command.command2;
+		jDoc[appw_key] = command.command3;
+
+		EEPROM.begin(2048);
+		EepromStream eepromStream(0, 2048);
+		serializeJson(jDoc, eepromStream);
+		EEPROM.end();
+#endif
 
 		Serial.printf("[success] WFAP %s %s. will be applied after reset.\n", 
 			command.command2.c_str(), command.command3.c_str());
@@ -402,20 +542,59 @@ const char * CFG_getApModePass(void)
 }
 
 /******************************************************************************
+* Function Name: CFG_getStaModeSSID
+* Description  : Wi-Fi認証情報を取得（SSID、ステーションモード）
+* Arguments    : none
+* Return Value : SSID
+******************************************************************************/
+const char * CFG_getStaModeSSID(void)
+{
+#ifndef ESP32
+	return sStModeSsid.c_str();
+#else
+	return "";
+#endif
+}
+
+/******************************************************************************
+* Function Name: CFG_getStaModePass
+* Description  : Wi-Fi認証情報を取得（パスワード、ステーションモード）
+* Arguments    : none
+* Return Value : password
+******************************************************************************/
+const char * CFG_getStaModePass(void)
+{
+#ifndef ESP32
+	return sStModePass.c_str();
+#else
+	return "";
+#endif
+}
+
+/******************************************************************************
 * Function Name: cfg_setLocalAddress
 * Description  : ローカルアドレスの設定
 * Arguments    : command.command2 = local address
 * Return Value : none
 ******************************************************************************/
-void cfg_setLocalAddress(EspEasySerialCommandEx::command_t command)
+void cfg_setLocalAddress(cli_cmd_t command)
 {
 	// > IPAD 192.168.0.2
 	if (ipLocal.fromString(command.command2.c_str())) {
 		uint8_t ipv4[] = {ipLocal[0],ipLocal[1],ipLocal[2],ipLocal[3]};
 
+#if defined(CFG_USE_PREFERENCES)
 		prefs.begin(CFG_NAMESPACE);
 		prefs.putBytes(ipad_key, ipv4, sizeof(ipv4));
 		prefs.end();
+#else
+		jDoc[ipad_key] = IPAddress(ipv4).toString();
+
+		EEPROM.begin(2048);
+		EepromStream eepromStream(0, 2048);
+		serializeJson(jDoc, eepromStream);
+		EEPROM.end();
+#endif
 
 		Serial.printf("[success] IPAD %s. will be applied after reset.\n", command.command2.c_str());
 		if (NULL != cbChangeSuccess) {
@@ -443,15 +622,24 @@ IPAddress CFG_getLocalAddress(void)
 * Arguments    : command.command2 = default gateway
 * Return Value : none
 ******************************************************************************/
-void cfg_setDefaultGateway(EspEasySerialCommandEx::command_t command)
+void cfg_setDefaultGateway(cli_cmd_t command)
 {
 	// > GWAY 192.168.0.1
 	if (ipGateway.fromString(command.command2.c_str())) {
 		uint8_t ipv4[] = {ipGateway[0],ipGateway[1],ipGateway[2],ipGateway[3]};
 
+#if defined(CFG_USE_PREFERENCES)
 		prefs.begin(CFG_NAMESPACE);
 		prefs.putBytes(ipgw_key, ipv4, sizeof(ipv4));
 		prefs.end();
+#else
+		jDoc[ipgw_key] = IPAddress(ipv4).toString();
+
+		EEPROM.begin(2048);
+		EepromStream eepromStream(0, 2048);
+		serializeJson(jDoc, eepromStream);
+		EEPROM.end();
+#endif
 
 		Serial.printf("[success] GWAY %s. will be applied after reset.\n", command.command2.c_str());
 		if (NULL != cbChangeSuccess) {
@@ -479,15 +667,23 @@ IPAddress CFG_getDefaultGateway(void)
 * Arguments    : command.command2 = subnet mask
 * Return Value : none
 ******************************************************************************/
-void cfg_setSubnetMask(EspEasySerialCommandEx::command_t command)
+void cfg_setSubnetMask(cli_cmd_t command)
 {
 	// > SNET 255.255.255.0
 	if (ipSubnet.fromString(command.command2.c_str())) {
 		uint8_t ipv4[] = {ipSubnet[0],ipSubnet[1],ipSubnet[2],ipSubnet[3]};
-
+#if defined(CFG_USE_PREFERENCES)
 		prefs.begin(CFG_NAMESPACE);
 		prefs.putBytes(ipsn_key, ipv4, sizeof(ipv4));
 		prefs.end();
+#else
+		jDoc[ipsn_key] = IPAddress(ipv4).toString();
+
+		EEPROM.begin(2048);
+		EepromStream eepromStream(0, 2048);
+		serializeJson(jDoc, eepromStream);
+		EEPROM.end();
+#endif
 
 		Serial.printf("[success] SNET %s. will be applied after reset.\n", command.command2.c_str());
 		if (NULL != cbChangeSuccess) {
@@ -515,13 +711,22 @@ IPAddress CFG_getSubnetMask(void)
 * Arguments    : command.command2 = host name
 * Return Value : none
 ******************************************************************************/
-void cfg_setHostName(EspEasySerialCommandEx::command_t command)
+void cfg_setHostName(cli_cmd_t command)
 {
 	// > HOST [host name] 
 	if (command.command2.length()) {
+#if defined(CFG_USE_PREFERENCES)
 		prefs.begin(CFG_NAMESPACE);
 		prefs.putString(host_key, command.command2.c_str());
 		prefs.end();
+#else
+		jDoc[host_key] = command.command2;
+
+		EEPROM.begin(2048);
+		EepromStream eepromStream(0, 2048);
+		serializeJson(jDoc, eepromStream);
+		EEPROM.end();
+#endif
 
 		Serial.printf("[success] HOST %s. will be applied after reset.\n", 
 			command.command2.c_str());

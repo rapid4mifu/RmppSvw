@@ -13,7 +13,6 @@ typedef void (*CallbackOnChangeSuccess)(void);
 
 bool CFG_initTask(void);
 
-void CFG_processCommand(String command, uint32_t id = 0);
 void CFG_attachChangeSuccessListener(CallbackOnChangeSuccess callback);
 
 void CFG_resetSavedData(void);
@@ -25,6 +24,8 @@ bool CFG_isApModeEnabled(void);
 const char * CFG_getHostName(void);
 const char * CFG_getApModeSSID(void);
 const char * CFG_getApModePass(void);
+const char * CFG_getStaModeSSID(void);
+const char * CFG_getStaModePass(void);
 IPAddress CFG_getLocalAddress(void);
 IPAddress CFG_getDefaultGateway(void);
 IPAddress CFG_getSubnetMask(void);
