@@ -1,96 +1,92 @@
 <!DOCTYPE html>
-<html lang="ja" data-bs-theme="dark">
+<html lang="en">
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>RmppSvw (Railway Model Power Pack, powered by ATOM Lite)</title>
+	<title>RmppSvw (Railway Model Power Pack)</title>
 	<script src="js/NoSleep.min.js"></script>
 	<script src="js/nouislider.min.js"></script>
-	<script src="js/reconnecting-ws.js"></script>
-	<script src="index.js" type="module"></script>
-	<link href="css/bootstrap.min.css" rel="stylesheet">
-	<link href="css/nouislider.min.css" rel="stylesheet">
-	<link href="css/dseg.css" rel="stylesheet" type="text/css">
+	<script src="js/reconnect-ws.min.js"></script>
+	<script src="index.min.js" type="module"></script>
+	<link href="css/pure-resp-min.css" rel="stylesheet" type="text/css">
+	<link href="css/nouislider.min.css" rel="stylesheet" type="text/css">
 	<link href="index.css" rel="stylesheet" type="text/css">
 </head>
 <body>
 	<div class="container-fluid">
-		<div class="row">
-			<div class="col-4 col-md-auto py-5 text-center mx-auto">
+		<div class="pure-g">
+			<div class="pure-u-1-3 stat-area">
 				<div class="info-txet">Power Pack Status</div>
-				<div class="d-grid gap-2">
-					<div id="state-mcu" class="svg-stat d-md-inline-block">
+				<div>
+					<div id="state-mcu" class="svg-stat">
 						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
 							<use href="#svg-cpu"/>
 						</svg>
 					</div>
-					<div id="state-out" class="svg-stat d-md-inline-block">
+					<div id="state-out" class="svg-stat">
 						<svg xmlns="http://www.w3.org/2000/svg" class="" viewBox="0 0 16 16">
 							<use href="#svg-plug"/>
 						</svg>
 					</div>
 				</div>
-				<div class="info-txet mt-3">Input Voltage</div>
-				<div class="my-2 led-seg-container">
-					<span class="p-1 led-seg-background">88.8</span>
-					<span id="volt-in" class="p-1 led-seg">--.-</span>
+				<div class="info-txet">Input Voltage</div>
+				<div class="led-seg-container">
+					<span class="led-seg-background">88.8</span>
+					<span id="volt-in" class="led-seg">--.-</span>
 				</div>
-				<div class="info-txet mt-3">CPU Temperature</div>
-				<div class="my-2 led-seg-container">
-					<span class="p-1 led-seg-background">888</span>
-					<span id="temp-cpu" class="p-1 led-seg">---</span>
+				<div class="info-txet">CPU Temperature</div>
+				<div class="led-seg-container">
+					<span class="led-seg-background">888</span>
+					<span id="temp-cpu" class="led-seg">---</span>
 				</div>
 			</div>
-			<div class="col-3 py-4">
+			<div class="pure-u-1-3">
 				<div id="out-duty"></div>
 			</div>
-			<div class="col-3 py-4" style="height: 55vh;"></div>
+			<div class="pure-u-1-6 duty-area"></div>
 		</div>
-		<div class="row align-items-center">
-			<div class="col"></div>
-			<div class="col col-md-2">
-				<button id="out-fwd" class="btn bg-transparent btn-dir" type="button">
+		<div class="pure-g btn-area">
+			<div class="pure-u-3-24 pure-u-md-3-12"></div>
+			<div class="pure-u-1-4 pure-u-md-1-6 btn-dir">
+				<button id="out-fwd" type="button">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
 						<use href="#svg-arrow-left-squarer"/>
 					</svg><div>Forward</div>
 				</button>
 			</div>
-			<div class="col col-md-2">
-				<button id="out-stop" class="btn bg-transparent btn-dir" type="button">
+			<div class="pure-u-1-4 pure-u-md-1-6 btn-dir">
+				<button id="out-stop" type="button">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
 						<use href="#slash-square-fill"/>
 					</svg><div>Stop</div>
-				</button>
-				<button id="out-off" class="btn bg-transparent btn-dir" type="button">
+				</button><br>
+				<button id="out-off" type="button">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
 						<use href="#svg-x-square"/>
 					</svg><div>OFF</div>
 				</button>
 			</div>
-			<div class="col col-md-2">
-				<button id="out-rvs" class="btn bg-transparent btn-dir" type="button">
+			<div class="pure-u-1-4 pure-u-md-1-6 btn-dir">
+				<button id="out-rvs" type="button">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
 						<use href="#svg-arrow-right-squarer"/>
 					</svg><div>Reverse</div>
 				</button>
 			</div>
-			<div class="col"></div>
+			<div class="pure-u-3-24 pure-u-md-3-12"></div>
 		</div>
-		<div class="row">
+		<div class="pure-g">
 			<details>
 				<summary>Configuration terminal</summary>
-				<div class="accordion-body">
-					<div class="input-group my-2">
-						<input type="text" class="form-control" id="cmd" aria-describedby="cmd-send">
-						<button class="btn btn-outline-light" type="button" id="cmd-send">Send</button>
-					</div>
-				</div>
+				<form class="pure-form">
+					<input type="text" class="pure-input-2-3" id="cmd" aria-describedby="cmd-send" />
+					<button class="pure-button" type="button" id="cmd-send">Send</button>
+				</form>
 			</details>
 		</div>
 	</div>
 	<script type="module">
-		import {OutputOn, OutputOff, OutputStop} from './index.js';
-		import {sendWebSocketData} from './socket.js';
+		import {OutputOn, OutputOff, OutputStop, sendWebSocketData} from './index.min.js';
 		var noSleep = new NoSleep();
 		var wakeLockEnabled = false;
 
@@ -155,7 +151,7 @@
 		}, false);
 
 	</script>
-	<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" class="d-none">
+	<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" hidden>
 		<defs>
 			<!-- ここにsymbolでSVGを定義する -->
 			<symbol id="svg-controller" viewbox="0 0 16 16">

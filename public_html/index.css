@@ -27,9 +27,55 @@ html {
 	}
 }*/
 
+/* DSEG7 Classic MINI */
+
+@font-face {
+	font-family: 'DSEG7-Classic-MINI';
+	src: url('font/D7CM/BoldItalic.woff2') format('woff2'),
+	url('font/D7CM/BoldItalic.woff') format('woff'),
+	url('font/D7CM/BoldItalic.ttf') format('truetype');
+	font-weight: bold;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'DSEG7-Classic-MINI';
+	src: url('font/D7CM/Italic.woff2') format('woff2'),
+	url('font/D7CM/Italic.woff') format('woff'),
+	url('font/D7CM/Italic.ttf') format('truetype');
+	font-weight: normal;
+	font-style: italic;
+}
+
+@font-face {
+	font-family: 'DSEG7-Classic-MINI';
+	src: url('font/D7CM/LightItalic.woff2') format('woff2'),
+	url('font/D7CM/LightItalic.woff') format('woff'),
+	url('font/D7CM/LightItalic.ttf') format('truetype');
+	font-weight: 200;
+	font-style: italic;
+}
+  
+body {
+	background-color:#212529;
+	color: #adb5bd;
+	padding: 0rem 1rem;
+}
+
+.btn-area {
+	margin-top: 1.5rem;
+	margin-bottom: 0.5rem;
+}
+
+.stat-area {
+	margin: auto;
+}
+
 .info-txet {
+	text-align: center;
 	font-size: 0.7rem;
-	margin: 0.2rem;
+	margin-top: 1.5rem;
+	margin-bottom: 0.5rem;
 }
 
 .led-seg-container {
@@ -39,7 +85,7 @@ html {
 	font-family: DSEG7-Classic-MINI;
 	font-style: italic;
 	width: 4.2rem;
-	height: 2.4rem;
+	height: 2.3rem;
 	margin: auto;
 }
 
@@ -48,8 +94,8 @@ html {
 	position: absolute;
 	width: 100%;
 	height: 100%;
-	top: -0.2rem;
-	left: 0rem;
+	top: 0.3rem;
+	left: 0.3rem;
 	z-index: 50;
 }
 
@@ -58,8 +104,8 @@ html {
 	position: absolute;
 	width: 100%;
 	height: 100%;
-	top: -0.2rem;
-	left: 0rem;
+	top: 0.3rem;
+	left: 0.3rem;
 	z-index: 100;
 }
 
@@ -69,9 +115,17 @@ html {
 }
 
 .btn-dir {
+	margin: auto;
+}
+
+.btn-dir button {
+	display:block;
+	border: 0px;
+	background-color: transparent;
 	width: 3rem;
 	padding: 0rem;
-	margin: 0.2rem 0.5rem;
+	margin: 0rem auto;
+	color:currentColor;
 	fill: currentColor;
 }
 
@@ -82,7 +136,7 @@ html {
 
 .btn-dir div {
 	font-size: 0.7rem;
-	margin: 0.2rem;
+	margin: 0.2rem 0rem;
 }
 
 #out-duty {
@@ -99,11 +153,27 @@ html {
 /* ブラウザ幅 > 768px */
 .svg-stat {
 	width: 5vh;
-	margin: 0.4rem auto;
+	margin: 0.7rem auto;
 }
 
 .svg-stat svg {
 	width: 100%; /* 親要素に合わせて拡大縮小 */
 	height: auto; /* アスペクト比を保持 */
 	fill: currentColor;
+}
+
+details {
+	width: 100%;
+}
+
+.pure-form input,button {
+	margin-top: 0.5rem;
+}
+
+#out-duty {
+	margin-top: 5vh;
+}
+
+.duty-area {
+	height: 55vh;
 }

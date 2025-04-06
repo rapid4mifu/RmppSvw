@@ -132,6 +132,8 @@ const resetAliveTimer = () => {
 		document.getElementById("state-out").style.color = 'currentColor';
 		document.getElementById("volt-in").textContent = '--.-';
 		document.getElementById("temp-cpu").textContent = '---';
+		duty_slider.noUiSlider.set(0);
+		dir = 0;
 	}, 1000);
 };
 
