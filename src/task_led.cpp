@@ -9,8 +9,16 @@
 
 #include "board.h"
 
+#if defined(TARGET_RP2040) || defined(TARGET_RP2350)
+#include <FreeRTOS.h>
+#include <queue.h>
+#include <task.h>
+#endif
+
+#if defined(ESP32)
 #ifndef APP_CPU_NUM
 #define APP_CPU_NUM (1)
+#endif
 #endif
 
 #ifndef NUM_OF_LED_PINS
@@ -27,6 +35,13 @@
 
 #define LED_QUE_SEND_WAIT (10 / portTICK_PERIOD_MS)
 
+#if defined(FastLED)
+CRGB leds[NUM_OF_LED_PINS];
+#endif
+
+/* サンプリング周期 [ms]*/
+#define LED_CONTROL_PERIOD 50
+
 typedef struct {
 	uint8_t r;
 	uint8_t g;
@@ -34,6 +49,7 @@ typedef struct {
 } led_rgb_t;
 
 typedef struct {
+	uint8_t index;
 	uint8_t pin;			// ピン番号
 	led_type_t type;		// LED種類
 	led_pattern_t ptn;		// 点灯パターン
@@ -73,10 +89,10 @@ const uint32_t led_blink_table[LED_PT_SIZE] ={
 	0b00000000000000000111110000011111,	// 点滅・0.25秒周期
 };
 
-/* led task handle */
-TaskHandle_t hTaskLED;
-/* led control queue handle */
-QueueHandle_t xQueLED;
+/* process task handle */
+static TaskHandle_t hTaskLED = NULL;
+/* control queue handle */
+static QueueHandle_t xQueLED = NULL;
 
 static void led_processTask(void* pvParameters);
 static void led_processRequest(led_req_que_t * req);
@@ -99,6 +115,7 @@ static void led_turnOff(led_control_t * p_led);
 bool LED_initTask(uint8_t pin, led_type_t type, led_pattern_t ptn)
 {
 	for (uint8_t i = 0; i < NUM_OF_LED_PINS; i++) {
+		stLeds[i].index = i;
 		stLeds[i].pin = 0;
 		stLeds[i].ptn = LED_PT_OFF;
 		stLeds[i].ptn_once = LED_PT_OFF;
@@ -116,7 +133,15 @@ bool LED_initTask(uint8_t pin, led_type_t type, led_pattern_t ptn)
 	}
 	
 	Serial.println("LED task is now starting ...");
-	BaseType_t taskCreated = xTaskCreateUniversal(led_processTask, "led_processTask", 2048, nullptr, tskIDLE_PRIORITY, &hTaskLED, APP_CPU_NUM);
+#if defined(ESP32)
+	BaseType_t taskCreated = xTaskCreateUniversal(led_processTask, "led_task", 2048, nullptr, tskIDLE_PRIORITY, &hTaskLED, APP_CPU_NUM);
+#else
+	BaseType_t taskCreated = xTaskCreate(led_processTask, "led_task", configMINIMAL_STACK_SIZE * 4, nullptr, tskIDLE_PRIORITY, &hTaskLED);
+#if defined(PICO_CYW43_SUPPORTED)
+	// The PicoW WiFi chip controls the LED, and only core 0 can make calls to it safely
+	vTaskCoreAffinitySet(hTaskLED, 1 << 0);
+#endif
+#endif
 	if (pdPASS != taskCreated) {
 		Serial.println(" [failure] Failed to create LED task.");
 	}
@@ -175,7 +200,13 @@ bool led_setupPin(led_control_t * pLed, uint8_t pin, led_type_t type, led_patter
 
 	case LED_TYPE_RGB_SERIAL:
 		// ----- Serial RGB LED initialize -----
+#if defined(ESP32)
 		pinMode(pLed->pin, OUTPUT);
+#elif defined(FastLED)
+		FastLED.addLeds<NEOPIXEL, pLed->pin>(leds[pLed->index], 1);
+#else
+		Serial.println("[warning] This platform does not support Serial RGB LED.");
+#endif
 		break;
 
 	default:
@@ -197,7 +228,9 @@ void led_processTask(void* pvParameters)
 	led_req_que_t reqCtrl;
 	led_control_t * p_led;
 	led_pattern_t * p_led_ptn;
-	const TickType_t xDelay = 50 / portTICK_PERIOD_MS;
+
+	portTickType xLastWakeTime;
+	xLastWakeTime = xTaskGetTickCount();
 
 	while (1) {
 		if (pdPASS == xQueueReceive(xQueLED, &reqCtrl, 0)) {
@@ -232,7 +265,7 @@ void led_processTask(void* pvParameters)
 			}
 		}
 
-		vTaskDelay(xDelay);
+		vTaskDelayUntil(&xLastWakeTime, (LED_CONTROL_PERIOD / portTICK_PERIOD_MS));
 	}
 }
 
@@ -283,6 +316,10 @@ void led_processRequest(led_req_que_t * req)
 ******************************************************************************/
 void LED_setLightPattern(led_pattern_t ptn, uint8_t pin)
 {
+	if (NULL == xQueLED) {
+		return;
+	}
+
 	led_req_que_t req;
 	req.req = LED_REQ_PTN;
 	req.led.pin = pin;
@@ -301,6 +338,10 @@ void LED_setLightPattern(led_pattern_t ptn, uint8_t pin)
 ******************************************************************************/
 void LED_setLightPatternOnce(led_pattern_t ptn, uint8_t cycle, uint8_t pin)
 {
+	if (NULL == xQueLED) {
+		return;
+	}
+
 	led_req_que_t req;
 	req.req = LED_REQ_PTN_ONCE;
 	req.led.pin = pin;
@@ -320,8 +361,11 @@ void LED_setLightPatternOnce(led_pattern_t ptn, uint8_t cycle, uint8_t pin)
 ******************************************************************************/
 void LED_setColorRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t pin)
 {
+	if (NULL == xQueLED) {
+		return;
+	}
+
 	led_req_que_t req;
-	
 	req.req = LED_REQ_COL;
 	req.led.pin = pin;
 	req.led.col.r = r;
@@ -355,8 +399,11 @@ void LED_setColor(LED_COLOR color, uint8_t pin)
 ******************************************************************************/
 void LED_setColorForStandbyRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t pin)
 {
+	if (NULL == xQueLED) {
+		return;
+	}
+	
 	led_req_que_t req;
-
 	req.req = LED_REQ_COL_STBY;
 	req.led.pin = pin;
 	req.led.col_stby.r = r;
@@ -488,9 +535,13 @@ void led_turnOn(led_control_t * p_led)
 	case LED_TYPE_1COLOR:
 		digitalWrite(p_led->pin, PIN_LED_ON);
 		break;
-
 	case LED_TYPE_RGB_SERIAL:
-		neopixelWrite(p_led->pin, p_led->col.r, p_led->col.g, p_led->col.b);
+#if defined(ESP32)
+		rgbLedWrite(p_led->pin, p_led->col.r, p_led->col.g, p_led->col.b);
+#elif defined(FastLED)
+		leds[p_led->index] = CRGB::Black;
+		FastLED.show();			
+#endif
 		break;
 
 	}
@@ -512,9 +563,13 @@ void led_turnOff(led_control_t * p_led)
 	case LED_TYPE_1COLOR:
 		digitalWrite(p_led->pin, PIN_LED_OFF);
 		break;
-
 	case LED_TYPE_RGB_SERIAL:
-		neopixelWrite(p_led->pin, 0, 0, 0);
+#if defined(ESP32)
+		rgbLedWrite(p_led->pin, 0, 0, 0);
+#elif defined(FastLED)
+		leds[p_led->index] = CRGB::Black;
+		FastLED.show();			
+#endif
 		break;
 	}
 }

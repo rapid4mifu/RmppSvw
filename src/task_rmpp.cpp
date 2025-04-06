@@ -10,19 +10,34 @@
 #include "task_rmpp.h"
 #include "task_system.h"
 #include "task_server.h"
+#include "task_cli.h"
 #include "task_cfg.h"
 #include "task_led.h"
 
 #include "board.h"
 #include "rmpp_cmd.h"
 
+#if defined(ESP32)
+#define RMPP_PWM_WRITE ledcWrite
+#define RMPP_TEMP_READ temperatureRead
+#elif defined(TARGET_RP2040) || defined(TARGET_RP2350)
+#include <FreeRTOS.h>
+#include <task.h>
+#include <timers.h>
+#define RMPP_PWM_WRITE analogWrite
+#define RMPP_TEMP_READ analogReadTemp
+#endif
+
+#if defined(ESP32)
 #ifndef APP_CPU_NUM
 #define APP_CPU_NUM (1)
+#endif
 #endif
 
 #define RMPP_STATUS_INTERVAL 200 // [ms]
 #define RMPP_ALIVE_TIMEOUT 3000 // [ms]
 #define RMPP_SERIAL_DEBUG_INTERVAL 10000 // [ms]
+#define RMPP_INHBIT_TIME 1000 // [ms]
 
 #define PWM_DUTY_100 (1 << PWM_RES)
 #define PWM_DUTY_MAX (PWM_DUTY_100 - 1)
@@ -31,6 +46,7 @@ typedef enum {
 	RMPP_MODE_INIT = 0,	/* 初期化 */
 	RMPP_MODE_OFF,		/* 出力オフ */
 	RMPP_MODE_ON,		/* 出力オン */
+	RMPP_MODE_INHBIT,	/* 出力禁止期間 */
 	RMPP_MODE_FAULT,	/* 障害要因発生 */
 	RMPP_MODE_FAIL		/* 故障要因発生 */
 } rmpp_mode_t;
@@ -68,25 +84,31 @@ typedef struct {
 	int8_t temp_cpu;		/* CPU temperture */
 } rmpp_info_t;
 
-rmpp_info_t stRmpp;
+static rmpp_info_t stRmpp;
+static bool srvStarted = false;
 
-TaskHandle_t hTaskRmpp;
-TickType_t tickAlive;
-size_t connectClients;
-
-uint8_t rx_data[RMPP_PACKET_LEN_MAX];
+/* process task handle */
+static TaskHandle_t hTaskRmpp = NULL;
+/* output inhbit timer handle */
+static TimerHandle_t hTimerInhbit = NULL;
+/* control alive timer handle */
+static TimerHandle_t hTimerAlive = NULL;
+static size_t connectClients;
 
 static void rmpp_processTask(void* pvParameters);
 
 static void rmpp_handleWsBinaryData(uint8_t * data, size_t len, uint32_t id);
 static void rmpp_handleWsClientChange(uint32_t id, size_t clientCount);
-static void rmpp_handleWiFiEvent(WiFiEvent_t event);
+static void rmpp_handleWiFiEvent(SYS_WIFI_EVENT_PARAM param);
 static void rmpp_handleCfgChangeSuccess(void);
+static void rmpp_printStatus(cli_cmd_t command);
 
 static void rmpp_parseOutputCommand(uint8_t * data, uint16_t len);
 static void rmpp_stopOutputOnFault(void);
 static void rmpp_turnOutputOff(void);
 static void rmpp_clearFault(void);
+static void rmpp_clearInhbit(TimerHandle_t xTimer);
+static void rmpp_onAliveTimeout(TimerHandle_t xTimer);
 
 /******************************************************************************
 * Function Name: RMPP_initTask
@@ -100,23 +122,51 @@ bool RMPP_initTask(void)
 	stRmpp.output.bit.mode = RMPP_MODE_INIT;
 	connectClients = 0;
 
+#if defined(ESP32)
 	ledcAttach(PIN_PWM1, PWM_FRQ, PWM_RES);
-	ledcAttach(PIN_PWM2, PWM_FRQ, PWM_RES);
 	ledcWrite(PIN_PWM1, 0);
+	ledcAttach(PIN_PWM2, PWM_FRQ, PWM_RES);
 	ledcWrite(PIN_PWM2, 0);
+#else
+	analogWriteFreq(PWM_FRQ);
+	analogWriteResolution(PWM_RES);
+
+	pinMode(PIN_PWM1, OUTPUT);
+	analogWrite(PIN_PWM1, 0);
+	pinMode(PIN_PWM2, OUTPUT);
+	analogWrite(PIN_PWM2, 0);
+#endif
 
 	pinMode(PIN_VIN, INPUT);
 	pinMode(PIN_FAULT, INPUT);
 
 	SRV_attachWsBinaryListener(rmpp_handleWsBinaryData);
-	SRV_attachWsTextListener(CFG_processCommand);
+	SRV_attachWsTextListener(CLI_processCommand);
 	SRV_attachWsConnectListener(rmpp_handleWsClientChange);
 	SRV_attachWsDisconnectListener(rmpp_handleWsClientChange);
 	SYS_attachWiFiEventListener(rmpp_handleWiFiEvent);
 	CFG_attachChangeSuccessListener(rmpp_handleCfgChangeSuccess);
+	CLI_addCommand("RMPP", rmpp_printStatus);
+
+	/* output inhbit timer handle */
+	hTimerInhbit = xTimerCreate("inhbit_timer", RMPP_INHBIT_TIME, pdFALSE, 0, rmpp_clearInhbit);
+	if (NULL == hTimerInhbit) {
+		Serial.println(" [failure] Failed to create RMPP output inhbit timer.");
+		return false;
+	}
+	/* control alive timer handle */
+	hTimerAlive = xTimerCreate("alive_timer", RMPP_ALIVE_TIMEOUT, pdTRUE, 0, rmpp_onAliveTimeout);
+	if (NULL == hTimerAlive) {
+		Serial.println(" [failure] Failed to create RMPP control alive timer.");
+		return false;
+	}
 
 	Serial.println("RMPP (Railway Model Power Pack) task is now starting ...");
-	BaseType_t taskCreated = xTaskCreateUniversal(rmpp_processTask, "rmpp_processTask", 2048 , nullptr, 2, &hTaskRmpp, APP_CPU_NUM);
+#if defined(ESP32)
+	BaseType_t taskCreated = xTaskCreateUniversal(rmpp_processTask, "rmpp_task", 2048 , nullptr, 2, &hTaskRmpp, APP_CPU_NUM);
+#else
+	BaseType_t taskCreated = xTaskCreate(rmpp_processTask, "rmpp_task", configMINIMAL_STACK_SIZE * 2, nullptr, 2, &hTaskRmpp);
+#endif
 	if (pdPASS != taskCreated) {
 		Serial.println(" [failure] Failed to create RMPP task.");
 	}
@@ -140,18 +190,9 @@ void rmpp_processTask(void* pvParameters)
 
 	while(true) {
 		// fault signal monitoring
-		if (FAULT_DURING == GPIO_INPUT_GET(PIN_FAULT)) {
+		if (FAULT_DURING == digitalRead(PIN_FAULT)) {
 			if (0 == stRmpp.status.bit.OverCurrent) {
 				rmpp_stopOutputOnFault();
-			}
-		}
-
-		// Alive monitoring
-		if (RMPP_ALIVE_TIMEOUT < (xTaskGetTickCount() - tickAlive)) {
-			// Turn off the output when the alive monitoring timeout
-			if (RMPP_MODE_ON == stRmpp.output.bit.mode) {
-				RMPP_stopOutput();
-				Serial.println("alive monitoring timeout");
 			}
 		}
 
@@ -163,7 +204,7 @@ void rmpp_processTask(void* pvParameters)
 			stRmpp.volt_in = analogRead(PIN_VIN) * 360 / 4095;
 
 			// cpu temperature (in units of 1deg)
-			stRmpp.temp_cpu = (int8_t)temperatureRead();
+			stRmpp.temp_cpu = (int8_t)RMPP_TEMP_READ();
 
 			// command binary data 
 			cmdToClient[0] = RMPP_CMDID_RD_STATUS;
@@ -176,19 +217,10 @@ void rmpp_processTask(void* pvParameters)
 			}
 			cmdToClient[4] = stRmpp.temp_cpu + 128;
 
-			SRV_pushWsBinaryToQueue(&cmdToClient[0], RMPP_CMD_LEN_RD_STATUS);
+			if (srvStarted) {
+				SRV_pushWsBinaryToQueue(&cmdToClient[0], RMPP_CMD_LEN_RD_STATUS);
+			}
 		}
-
-#ifdef RMPP_SERIAL_DEBUG_INTERVAL
-		if (RMPP_SERIAL_DEBUG_INTERVAL < (xTaskGetTickCount() - tickDebug)) {
-			tickDebug = xTaskGetTickCount();
-			
-			float vin = (float)analogRead(PIN_VIN) * 36.0 / 4095.0;
-			Serial.printf("Input Voltage   : %.2f V\n", vin);
-			Serial.printf("Output Duty     : %d\n", stRmpp.duty_set);
-			Serial.printf("CPU Temperature : %.2f deg\n", temperatureRead());
-		}
-#endif
 
 		vTaskDelay(1);
 	}
@@ -217,6 +249,10 @@ void rmpp_handleWsBinaryData(uint8_t * data, size_t len, uint32_t id)
 ******************************************************************************/
 void rmpp_handleWsClientChange(uint32_t id, size_t clientCount)
 {
+	if (false == srvStarted) {
+		srvStarted = true;
+	}
+
 	connectClients = clientCount;
 	
 	if (clientCount) {
@@ -232,9 +268,10 @@ void rmpp_handleWsClientChange(uint32_t id, size_t clientCount)
 * Arguments    : event - WiFi event code
 * Return Value : none
 ******************************************************************************/
-void rmpp_handleWiFiEvent(WiFiEvent_t event)
+void rmpp_handleWiFiEvent(SYS_WIFI_EVENT_PARAM param)
 {
-	switch (event) {
+#if defined(ESP32)
+	switch (param) {
 		case ARDUINO_EVENT_WIFI_READY:
 			LED_setLightPattern(LED_PT_BLINK_SLOW);
 			break;
@@ -271,6 +308,42 @@ void rmpp_handleWiFiEvent(WiFiEvent_t event)
 		default:
 			break;
 	}
+#else
+	switch (param) {
+		case WL_IDLE_STATUS:
+			LED_setLightPattern(LED_PT_BLINK_SLOW);
+			break;
+		case WL_NO_SSID_AVAIL:
+			LED_setLightPattern(LED_PT_ON);
+			break;
+		case WL_SCAN_COMPLETED:
+			LED_setLightPattern(LED_PT_BLINK_FAST);
+			break;
+		case WL_CONNECTED:
+			LED_setLightPattern(LED_PT_BLINK_ON10);
+			break;
+		case WL_CONNECT_FAILED:
+			LED_setLightPattern(LED_PT_ON);
+			break;
+		case WL_CONNECTION_LOST:
+			LED_setLightPattern(LED_PT_BLINK_SLOW);
+			break;
+		case WL_DISCONNECTED: 
+			LED_setLightPattern(LED_PT_BLINK_SLOW);
+			break;
+		case WL_AP_LISTENING:
+			LED_setLightPattern(LED_PT_BLINK_ON10);
+			break;
+		case WL_AP_CONNECTED:
+			LED_setLightPattern(LED_PT_BLINK_ON10);
+			break;
+		case WL_AP_FAILED:
+			LED_setLightPattern(LED_PT_ON);
+			break;
+		default:
+			break;
+	}
+#endif
 }
 
 /******************************************************************************
@@ -285,6 +358,20 @@ void rmpp_handleCfgChangeSuccess(void)
 }
 
 /******************************************************************************
+* Function Name: rmpp_printStatus
+* Description  : パワーパック状態をコンソールに出力する
+* Arguments    : none
+* Return Value : none
+******************************************************************************/
+void rmpp_printStatus(cli_cmd_t command)
+{
+	float vin = (float)analogRead(PIN_VIN) * 36.0 / 4095.0;
+	Serial.printf("- Input Voltage   : %.2f V\n", vin);
+	Serial.printf("- Output Duty     : %d\n", stRmpp.duty_set);
+	Serial.printf("- CPU Temperature : %.2f deg\n", RMPP_TEMP_READ());
+}
+
+/******************************************************************************
 * Function Name: rmpp_parseOutputCommand
 * Description  : 出力制御コマンドを解析
 * Arguments    : data - command data,
@@ -296,7 +383,7 @@ void rmpp_parseOutputCommand(uint8_t * data, uint16_t len)
 	uint16_t duty;
 	uint8_t dir = *(data + 2) & 0xC0;
 
-	tickAlive = xTaskGetTickCount();
+	xTimerReset(hTimerAlive, 0);
 
 	if (dir) {
 		if (RMPP_MODE_OFF == stRmpp.output.bit.mode) {
@@ -321,6 +408,18 @@ void rmpp_parseOutputCommand(uint8_t * data, uint16_t len)
 }
 
 /******************************************************************************
+* Function Name: RMPP_resetOutput
+* Description  : 出力をリセットする
+* Arguments    : none
+* Return Value : none
+******************************************************************************/
+void RMPP_resetOutput(void)
+{
+	pinMode(PIN_PWM1, INPUT_PULLDOWN);
+	pinMode(PIN_PWM2, INPUT_PULLDOWN);
+}
+
+/******************************************************************************
 * Function Name: rmpp_startOutput
 * Description  : 出力動作を開始する
 * Arguments    : dir - 進行方向
@@ -333,6 +432,7 @@ void RMPP_startOutput(rmpp_dir_t dir)
 	}
 
 	Serial.println("[info] output on !");
+	xTimerStart(hTimerAlive, 0);
 
 	stRmpp.output.bit.mode = RMPP_MODE_ON;
 	stRmpp.status.bit.ext_ctrl = 1;
@@ -345,8 +445,8 @@ void RMPP_startOutput(rmpp_dir_t dir)
 	}
 
 	// output circuit is in brake mode
-	ledcWrite(PIN_PWM1, PWM_DUTY_100);
-	ledcWrite(PIN_PWM2, PWM_DUTY_100);
+	RMPP_PWM_WRITE(PIN_PWM1, PWM_DUTY_100);
+	RMPP_PWM_WRITE(PIN_PWM2, PWM_DUTY_100);
 
 	if ((RMPP_DIR_FWD == dir) && (0 == stRmpp.output.bit.rvs)) {
 		stRmpp.output.bit.fwd = 1;
@@ -356,44 +456,12 @@ void RMPP_startOutput(rmpp_dir_t dir)
 }
 
 /******************************************************************************
-* Function Name: RMPP_setOutputDuty
-* Description  : 出力デューティを設定する
-* Arguments    : duty = 0 -> Duty 0%, 4095 -> Duty 100%
-* Return Value : none
-******************************************************************************/
-void RMPP_setOutputDuty(uint16_t duty)
-{
-	if (RMPP_MODE_ON == stRmpp.output.bit.mode) {
-		stRmpp.duty_set = (uint16_t)duty;
-
-		// duty cycle inversion
-		// (becase PWM signal is active low)
-		duty = PWM_DUTY_100 - duty;
-		if (PWM_DUTY_MAX < duty) {
-			duty = PWM_DUTY_MAX;
-		}
-
-		if (stRmpp.output.bit.fwd) {
-			// output circuit is Forward mode
-			// (voltage polarity : OUT1 -> OUT2)
-			ledcWrite(PIN_PWM2, duty);
-		} else if (stRmpp.output.bit.rvs) {
-			// output circuit is Reverse mode
-			// (voltage polarity : OUT2 -> OUT1)
-			ledcWrite(PIN_PWM1, duty);
-		}
-	} else {
-		stRmpp.duty_set = 0;
-	}
-}
-
-/******************************************************************************
 * Function Name: RMPP_stopOutput
 * Description  : 出力動作を停止する
 * Arguments    : none
 * Return Value : none
 ******************************************************************************/
-void RMPP_stopOutput(void)
+void RMPP_stopOutput(bool inhbit)
 {
 	if (RMPP_MODE_ON == stRmpp.output.bit.mode) {
 		rmpp_turnOutputOff();
@@ -404,7 +472,12 @@ void RMPP_stopOutput(void)
 			LED_setLightPattern(LED_PT_BLINK_ON10);
 		}
 	
-		stRmpp.output.bit.mode = RMPP_MODE_OFF;
+		if (inhbit) {
+			stRmpp.output.bit.mode = RMPP_MODE_INHBIT;
+			xTimerStart(hTimerInhbit, 0);
+		} else {
+			stRmpp.output.bit.mode = RMPP_MODE_OFF;
+		}
 	} else if (RMPP_MODE_FAULT == stRmpp.output.bit.mode) {
 		rmpp_clearFault();
 	}
@@ -429,6 +502,38 @@ void rmpp_stopOutputOnFault(void)
 }
 
 /******************************************************************************
+* Function Name: RMPP_setOutputDuty
+* Description  : 出力デューティを設定する
+* Arguments    : duty = 0 -> Duty 0%, 4095 -> Duty 100%
+* Return Value : none
+******************************************************************************/
+void RMPP_setOutputDuty(uint16_t duty)
+{
+	if (RMPP_MODE_ON == stRmpp.output.bit.mode) {
+		stRmpp.duty_set = (uint16_t)duty;
+
+		// duty cycle inversion
+		// (becase PWM signal is active low)
+		duty = PWM_DUTY_100 - duty;
+		if (PWM_DUTY_MAX < duty) {
+			duty = PWM_DUTY_MAX;
+		}
+
+		if (stRmpp.output.bit.fwd) {
+			// output circuit is Forward mode
+			// (voltage polarity : OUT1 -> OUT2)
+			RMPP_PWM_WRITE(PIN_PWM2, duty);
+		} else if (stRmpp.output.bit.rvs) {
+			// output circuit is Reverse mode
+			// (voltage polarity : OUT2 -> OUT1)
+			RMPP_PWM_WRITE(PIN_PWM1, duty);
+		}
+	} else {
+		stRmpp.duty_set = 0;
+	}
+}
+
+/******************************************************************************
 * Function Name: rmpp_turnOutputOff
 * Description  : 出力をオフにする
 * Arguments    : none
@@ -437,14 +542,15 @@ void rmpp_stopOutputOnFault(void)
 void rmpp_turnOutputOff(void)
 {
 	// output circuit is Hi-Z mode
-	ledcWrite(PIN_PWM1, 0);
-	ledcWrite(PIN_PWM2, 0);
+	RMPP_PWM_WRITE(PIN_PWM1, 0);
+	RMPP_PWM_WRITE(PIN_PWM2, 0);
 
 	stRmpp.output.bit.fwd = 0;
 	stRmpp.output.bit.rvs = 0;
 	stRmpp.status.bit.ext_ctrl = 0;
 	stRmpp.duty_set = 0;
 
+	xTimerStop(hTimerAlive, 0);
 	Serial.println("[info] output off !");
 }
 
@@ -456,7 +562,7 @@ void rmpp_turnOutputOff(void)
 ******************************************************************************/
 void rmpp_clearFault(void)
 {
-	if (FAULT_CLEAR != GPIO_INPUT_GET(PIN_FAULT)) {
+	if (FAULT_CLEAR != digitalRead(PIN_FAULT)) {
 		Serial.println("[warning] motor driver is in protection mode.");
 		return;
 	}
@@ -474,3 +580,29 @@ void rmpp_clearFault(void)
 	}
 }
 
+/******************************************************************************
+* Function Name: rmpp_clearInhbit
+* Description  : 出力禁止状態をクリアする
+* Arguments    : none
+* Return Value : none
+******************************************************************************/
+void rmpp_clearInhbit(TimerHandle_t xTimer)
+{
+	if (RMPP_MODE_INHBIT == stRmpp.output.bit.mode) {
+		stRmpp.output.bit.mode = RMPP_MODE_OFF;
+	}
+}
+
+/******************************************************************************
+* Function Name: rmpp_onAliveTimeout
+* Description  : 外部コントロールのタイムアウト処理
+* Arguments    : none
+* Return Value : none
+******************************************************************************/
+void rmpp_onAliveTimeout(TimerHandle_t xTimer)
+{
+	if (RMPP_MODE_ON == stRmpp.output.bit.mode) {
+		Serial.println("alive monitoring timeout");
+		RMPP_stopOutput();
+	}
+}

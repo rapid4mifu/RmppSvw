@@ -19,8 +19,9 @@ typedef enum {
 
 bool RMPP_initTask(void);
 
+void RMPP_resetOutput(void);
 void RMPP_startOutput(rmpp_dir_t dir);
-void RMPP_stopOutput(void);
+void RMPP_stopOutput(bool inhbit = false);
 void RMPP_setOutputDuty(uint16_t duty);
 
 #endif /* __TASK_RMPP_H__*/	/* ìÒèdíËã`ñhé~ */

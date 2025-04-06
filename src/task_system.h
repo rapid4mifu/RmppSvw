@@ -10,10 +10,15 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-typedef void (*CallbackWifiEvent)(WiFiEvent_t);
+#if defined(ESP32)
+#define SYS_WIFI_EVENT_PARAM WiFiEvent_t
+#else
+#define SYS_WIFI_EVENT_PARAM wl_status_t
+#endif
+typedef void (*CallbackWifiEvent)(SYS_WIFI_EVENT_PARAM);
 
 typedef struct {
-	wifi_mode_t wifiMode;
+	WiFiMode_t wifiMode;
 	const char * wifiSsid;
 	const char * wifiPass;
 	IPAddress ipLocal;
@@ -24,6 +29,7 @@ typedef struct {
 bool SYS_initTask(system_config_t* cfg = nullptr);
 
 void SYS_attachWiFiEventListener(CallbackWifiEvent callback);
+bool SYS_isWiFiAvailable(void);
 
 #endif /* __TASK_SYSTEM_H__*/	/* ìÒèdíËã`ñhé~ */
 #define __TASK_SYSTEM_H__	/* ìÒèdíËã`ñhé~ */

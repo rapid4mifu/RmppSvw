@@ -6,11 +6,12 @@
 // --------------------------------------------------------
 
 #include <Arduino.h>
-#include <M5Unified.h>
 #include <WiFi.h>
 
 #include "board.h"
 #include "task_cfg.h"
+#include "task_cli.h"
+#include "task_input.h"
 #include "task_led.h"
 #include "task_rmpp.h"
 #include "task_server.h"
@@ -23,24 +24,39 @@ void reboot(void) {
 }
 
 void setup() {
-	auto cfg = M5.config();
-	M5.begin(cfg);
+	// ----- output reset (set to Hi-Z) -----
+	RMPP_resetOutput();
 
+	// ----- UART initialize -----
+	Serial.begin(115200);
+	vTaskDelay(2000);
+
+	// ----- CLI (Command Line Interface) task initialize -----
+	if (false == CLI_initTask()) {
+		reboot();
+	}
+		
 	// ----- RMPP (Railway Model Power Pack) task initialize -----
 	if (false == RMPP_initTask()) {
 		reboot();
 	}
+	
+	// ----- Button task initialize -----
+	if (false == INP_initTask()) {
+		reboot();
+	}
 
 	// ----- LED task initialize -----
-	if (false == LED_initTask(PIN_LED, LED_TYPE_RGB_SERIAL)) {
+#if defined(ARDUINO_M5Stack_ATOM)
+	led_type_t typeLed = LED_TYPE_RGB_SERIAL;
+#elif defined(ARDUINO_RASPBERRY_PI_PICO_2W)
+	led_type_t typeLed = LED_TYPE_1COLOR;
+#endif
+	if (false == LED_initTask(PIN_LED, typeLed)) {
 		reboot();
 	}
 	LED_setColor(LED_COL_WHITE);
-	
-	// ----- UART initialize -----
-	Serial.begin(115200);
-	vTaskDelay(1000);
-	
+
 	// ----- Configuration task initialize -----
 	if (false == CFG_initTask()) {
 		reboot();
@@ -49,7 +65,7 @@ void setup() {
 	// ----- Wi-Fi setting -----
 	system_config_t cfgSys;
 	if (CFG_isApModeEnabled()) {
-		cfgSys.wifiMode = WIFI_MODE_AP;
+		cfgSys.wifiMode = WIFI_AP;
 		cfgSys.wifiSsid = CFG_getApModeSSID();
 		cfgSys.wifiPass = CFG_getApModePass();
 		cfgSys.ipLocal = IPAddress(192, 168, 0, 1);
@@ -59,7 +75,9 @@ void setup() {
 		// color for access point mode operation
 		LED_setColorForStandby(LED_COL_MAGENTA);
 	} else {
-		cfgSys.wifiMode = WIFI_MODE_STA;
+		cfgSys.wifiMode = WIFI_STA;
+		cfgSys.wifiSsid = CFG_getStaModeSSID();
+		cfgSys.wifiPass = CFG_getStaModePass();
 		cfgSys.ipLocal = CFG_getLocalAddress();
 		cfgSys.ipGateway = CFG_getDefaultGateway();
 		cfgSys.ipSubnet = CFG_getSubnetMask();
@@ -72,23 +90,17 @@ void setup() {
 	// ----- System on Chip task initialize -----
 	if (false == SYS_initTask(&cfgSys)) {
 		reboot();
+	}
 
 	// ----- Web Server task initialize -----
-	} else if (false == SRV_initTask(CFG_getHostName())) {
-		reboot();
+	if (SYS_isWiFiAvailable()) {
+		if (false == SRV_initTask(CFG_getHostName())) {
+			reboot();
+		}
 	}
 }
 
-void loop() {
-	M5.update();
-
-	if (M5.BtnA.wasClicked()) {
-		Serial.println("Buttun is clicked");
-		RMPP_stopOutput();
-	} else if (M5.BtnA.wasHold()) {
-		Serial.println("Buttun is long pressed.");		
-		CFG_toggleApMode();
-	}
-
-	vTaskDelay(50);
+void loop()
+{
+	vTaskDelay(1000);
 }
